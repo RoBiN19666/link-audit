@@ -1850,6 +1850,7 @@ for key, default in (("stop_requested", False), ("batch_running", False),
                      ("link_check_running", False), ("link_check_stop", False),
                      ("link_check_queue", []), ("link_check_total", 0),
                      ("link_check_processed", 0), ("link_check_mode", "missing"),
+                     ("link_check_started", 0.0),
                      ("link_batch_size", LINK_CHECK_BATCH),
                      ("link_check_delay", LINK_DEFAULT_DELAY)):
     st.session_state.setdefault(key, default)
@@ -1978,6 +1979,7 @@ def _start_link_check(mode: str) -> None:
         link_check_running=True, link_check_stop=False,
         link_check_queue=queue, link_check_total=len(queue),
         link_check_processed=0, link_check_mode=mode,
+        link_check_started=time.time(),
     )
     st.rerun()
 
@@ -2000,10 +2002,11 @@ def _reset_all() -> None:
     for key in ("stop_requested", "batch_running", "confirm_sitemap", "confirm_reset",
                 "confirm_rescan", "table_page", "pages_done_in_batch", "batch_target",
                 "site_error_streak", "link_check_running", "link_check_stop",
-                "link_check_total", "link_check_processed"):
+                "link_check_total", "link_check_processed",
+                "link_check_started"):
         st.session_state[key] = False if key not in (
             "table_page", "pages_done_in_batch", "batch_target", "site_error_streak",
-            "link_check_total", "link_check_processed"
+            "link_check_total", "link_check_processed", "link_check_started"
         ) else 0
     st.session_state["link_check_queue"] = []
     st.session_state["start_url_input"] = START_URL
@@ -2484,12 +2487,26 @@ if st.session_state.get("link_check_running"):
     link_total = max(1, int(st.session_state.get("link_check_total", 0)))
     link_done = int(st.session_state.get("link_check_processed", 0))
     link_progress = st.progress(min(1.0, link_done / link_total))
+    link_time_cols = st.columns(2)
+    link_elapsed_metric = link_time_cols[0].empty()
+    link_left_metric = link_time_cols[1].empty()
     link_status_line = st.empty()
+
+    def _paint_link_times(done: int) -> None:
+        started = float(st.session_state.get("link_check_started") or time.time())
+        elapsed = max(0.0, time.time() - started)
+        speed = done / elapsed if elapsed > 0 and done > 0 else 0.0
+        left = (link_total - done) / speed if speed > 0 else None
+        link_elapsed_metric.metric("Прошло", _format_duration(elapsed))
+        link_left_metric.metric("Осталось", _format_duration(left))
+
+    _paint_link_times(link_done)
 
     def _finish_link_check(kind: str, message: str) -> None:
         st.session_state.update(
             link_check_running=False, link_check_stop=False,
             link_check_queue=[], link_check_total=0, link_check_processed=0,
+            link_check_started=0.0,
         )
         _link_check_session.clear()
         st.session_state["_flash"] = (kind, message)
@@ -2530,6 +2547,7 @@ if st.session_state.get("link_check_running"):
         run_processed += 1
         current_done = link_done + run_processed
         link_progress.progress(min(1.0, current_done / link_total))
+        _paint_link_times(current_done)
         link_status_line.caption(
             f"Проверено: {current_done}/{link_total} | {_status_label(entry)} | {key}"
         )
