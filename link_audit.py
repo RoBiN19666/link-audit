@@ -1843,6 +1843,8 @@ for key, default in (("stop_requested", False), ("batch_running", False),
                      ("site_error_streak", 0), ("confirm_sitemap", False),
                      ("confirm_reset", False), ("confirm_rescan", False),
                      ("continuous_scan", False), ("table_page", 0),
+                     ("start_url_input",
+                      str(state.params.get("start_url") or START_URL)),
                      ("speed_mode", _default_mode), ("manual_delay", float(DELAY)),
                      ("auto_min_delay", 0.3), ("auto_max_delay", 10.0),
                      ("link_check_running", False), ("link_check_stop", False),
@@ -1853,7 +1855,7 @@ for key, default in (("stop_requested", False), ("batch_running", False),
     st.session_state.setdefault(key, default)
 
 st.subheader("⚙️ Параметры")
-start_url = st.text_input("Стартовый URL", value=START_URL).strip()
+start_url = st.text_input("Стартовый URL", key="start_url_input").strip()
 base_cols = st.columns(2)
 batch_size = base_cols[0].number_input("Размер батча", 10, 500, 50, 10)
 respect = base_cols[1].checkbox("Уважать robots.txt", value=RESPECT_ROBOTS)
@@ -2004,6 +2006,7 @@ def _reset_all() -> None:
             "link_check_total", "link_check_processed"
         ) else 0
     st.session_state["link_check_queue"] = []
+    st.session_state["start_url_input"] = START_URL
     st.session_state.pop("throttle", None)
     st.session_state.pop("throttle_snapshot", None)
     st.session_state["_flash"] = ("success", "Прогресс, CSV, лог и статусы ссылок удалены.")
