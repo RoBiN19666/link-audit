@@ -1,0 +1,45 @@
+# --- User data: never publish crawl results ---
+crawl_state.json
+external_links.csv
+link_status.json
+crawl.log
+
+# --- Build output ---
+build/
+dist/
+build_onedir/
+dist_onedir/
+release/
+*.spec
+*.exe
+.pyinstaller/
+.tmp/
+build_exe.log
+*.log
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Local UI/debug artifacts ---
+ui_*.png
+layout_*.png
+portable_*.png
+warn_ui.png
+.chrome_*/
+.chrome-*/
+.edge_*/
+*.xlsx
+
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
