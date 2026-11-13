@@ -347,7 +347,7 @@ if __name__ == "__main__" and not _running_in_streamlit():
 import csv, gzip, io, json, logging, re, warnings
 from collections import Counter, deque
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from http import HTTPStatus
 from typing import Any, Iterable
@@ -2168,7 +2168,14 @@ def _paint_progress() -> None:
     speed = done_now / elapsed if elapsed > 0 else 0.0
     eta = (total_now - done_now) / speed if speed > 0 else None
     speed_metric.metric("Скорость (URL/сек)", f"{speed:.2f}")
-    eta_metric.metric("ETA", _format_duration(eta))
+    if eta is None:
+        eta_text = "—"
+    else:
+        now = datetime.now()
+        finish = now + timedelta(seconds=eta)
+        eta_text = (finish.strftime("%H:%M") if finish.date() == now.date()
+                    else finish.strftime("%d.%m %H:%M"))
+    eta_metric.metric("ETA (время)", eta_text)
     elapsed_metric.metric("Прошло", _format_duration(elapsed))
     left_metric.metric("Осталось", _format_duration(eta))
     last_page_caption.caption(f"Последняя страница: {state.stats.get('last_page') or '—'}")
