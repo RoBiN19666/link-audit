@@ -1842,7 +1842,7 @@ for key, default in (("stop_requested", False), ("batch_running", False),
                      ("pages_done_in_batch", 0), ("batch_target", 0),
                      ("site_error_streak", 0), ("confirm_sitemap", False),
                      ("confirm_reset", False), ("confirm_rescan", False),
-                     ("table_page", 0),
+                     ("continuous_scan", False), ("table_page", 0),
                      ("speed_mode", _default_mode), ("manual_delay", float(DELAY)),
                      ("auto_min_delay", 0.3), ("auto_max_delay", 10.0),
                      ("link_check_running", False), ("link_check_stop", False),
@@ -1867,6 +1867,12 @@ mode = st.radio(
     ),
     horizontal=True,
     key="speed_mode",
+)
+continuous_scan = st.checkbox(
+    "Сканировать непрерывно",
+    key="continuous_scan",
+    help="После каждого батча автоматически запускать следующий, пока в "
+         "очереди есть страницы. Пауза и экстренный тормоз работают.",
 )
 speed_valid = True
 delay_metric_slot = None
@@ -2212,6 +2218,23 @@ if st.session_state["batch_running"]:
     status_line = st.empty()
 
     def _finish_batch(kind: str, message: str) -> None:
+        pending = any(url not in set(state.done) for url in state.queue)
+        if kind == "success" and continuous_scan and pending:
+            st.session_state.update(
+                batch_running=True, stop_requested=False, pages_done_in_batch=0,
+                batch_target=int(batch_size), site_error_streak=0,
+            )
+            state.throttle = throttle.snapshot()
+            state.stats["pages_scanned"] = len(state.done)
+            try:
+                state.save(STATE_FILE)
+            except OSError:
+                pass
+            st.session_state["_flash"] = (
+                "info", f"{message} Следующий батч запускается автоматически."
+            )
+            st.rerun()
+            return
         st.session_state.update(
             batch_running=False, stop_requested=False, pages_done_in_batch=0,
             batch_target=0, site_error_streak=0,
